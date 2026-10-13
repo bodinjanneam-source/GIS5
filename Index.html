@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>แผนดำเนินงานแผนที่แนวท่อและสำรวจตรวจสอบข้อมูล GIS 2570</title>
+<!-- Include Chart.js สำหรับทำแผนภูมิทรงกลม -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--navy:#0f2b54;--blue:#1967d2;--cyan:#00a8cc;--pale:#f0f5fb;--ink:#1e293b;--muted:#475569;--line:#cbd5e1;--green:#0d9448;--orange:#d97706;--red:#dc2626}
+*{box-sizing:border-box}body{margin:0;background:#f8fafc;color:var(--ink);font-family:"Leelawadee UI","Tahoma",sans-serif;font-size:15px;line-height:1.5}
+.topbar{background:linear-gradient(120deg,#0f2b54 0%,#1967d2 58%,#00a8cc 100%);color:white;padding:30px clamp(20px,4vw,56px);position:relative;overflow:hidden;box-shadow:0 10px 28px rgba(15,43,84,0.15)}
+.topbar:after{content:"";position:absolute;width:260px;height:260px;border:36px solid rgba(255,255,255,0.12);border-radius:50%;right:-55px;top:-120px}
+.eyebrow{font-size:13px;letter-spacing:1.2px;text-transform:uppercase;opacity:.9;font-weight:700}.topbar h1{margin:8px 0 8px;font-size:clamp(24px,3vw,34px);line-height:1.3;font-weight:700}.topbar p{margin:0;color:#f1f5f9;font-size:15px}
+
+.wrap{max-width:100%;margin:24px 0;padding:0 16px 36px}
+.layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:24px;align-items:start;transition:all 0.3s ease}
+.layout.collapsed{grid-template-columns:0px minmax(0,1fr)}
+
+.sidebar{background:linear-gradient(180deg,#ffffff,#f8fafc);border:1px solid var(--line);border-left:0;border-radius:0 20px 20px 0;padding:18px;box-shadow:5px 12px 30px rgba(15,43,84,0.08);position:sticky;top:14px;overflow:hidden;transition:all 0.3s ease;width:320px}
+.layout.collapsed .sidebar{opacity:0;visibility:hidden;padding:0;border:0;width:0}
+
+.side-title{font-size:15px;color:var(--navy);font-weight:800;padding:8px 8px 14px;letter-spacing:.5px}
+.side-title span{font-size:13px;color:var(--muted);font-weight:600;display:block;margin-top:4px}
+
+.tab{width:100%;border:1px solid transparent;background:transparent;text-align:left;padding:15px 14px;border-radius:14px;display:flex;gap:14px;align-items:center;color:var(--muted);font:inherit;font-size:15px;cursor:pointer;margin-bottom:8px;transition:.18s}
+.tab:hover{background:#f1f5f9;border-color:#e2e8f0;color:var(--navy)}.tab.active{background:linear-gradient(110deg,#e0f2fe,#e0f7fa);border-color:#bae6fd;color:var(--navy);font-weight:bold;box-shadow:inset 4px 0 var(--blue),0 4px 12px rgba(25,103,210,0.08)}
+.tab span{white-space:normal;word-break:break-word;line-height:1.4}
+.num{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:#e2e8f0;color:var(--blue);font-size:16px;font-weight:800;flex-shrink:0}
+.tab.active .num{background:linear-gradient(135deg,var(--blue),var(--cyan));color:white}
+.tab small{display:block;font-size:13px;font-weight:normal;color:var(--muted);margin-top:4px}
+
+.content{min-width:0}
+.panel{display:none;animation:fade .2s ease}.panel.active{display:block}@keyframes fade{from{opacity:.55;transform:translateY(4px)}to{opacity:1;transform:none}}
+.panel-head{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:20px}.panel-head h2{margin:0;font-size:clamp(22px,2vw,28px);color:var(--navy);font-weight:700;letter-spacing:-.3px}
+.pill{white-space:nowrap;background:#dcfce7;color:#166534;padding:8px 14px;border-radius:99px;font-size:13px;font-weight:700}
+.card{background:white;border:1px solid var(--line);border-radius:18px;padding:24px;margin-bottom:18px;box-shadow:0 8px 24px rgba(15,43,84,0.06)}
+.card h3{margin:0 0 8px;font-size:18px;color:var(--navy);font-weight:700}.desc{color:var(--muted);font-size:14px;margin:0 0 18px;line-height:1.6}
+
+/* Task Item */
+.task{display:grid;grid-template-columns:46px minmax(0,1fr) auto;gap:16px;align-items:start;padding:18px 0;border-top:1px solid #e2e8f0}.task:first-of-type{border-top:0}
+.task-icon{width:44px;height:44px;border-radius:12px;background:#e0f2fe;display:grid;place-items:center;font-size:20px}
+.task h4{margin:2px 0 6px;font-size:16px;font-weight:700;color:var(--navy)}.task p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+.tag-plan{font-size:12px;color:#92400e;background:#fef3c7;border-radius:99px;padding:6px 14px;white-space:nowrap;font-weight:700;border:1px solid #fde68a}
+
+/* จัดแถว OJT ให้ Plugin อยู่ตรงกลาง */
+.task-ojt{display:grid;grid-template-columns:46px 1fr auto auto;align-items:center;gap:18px}
+.ojt-media{display:flex;align-items:center;gap:12px;margin:0}
+.ojt-img-card{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:var(--navy);transition:.2s}
+.ojt-img-card:hover{border-color:var(--blue);background:#f0f7ff;transform:translateY(-2px)}
+.ojt-img-card img{width:36px;height:36px;object-fit:cover;border-radius:8px;background:#e2e8f0;border:1px solid #cbd5e1}
+
+/* ปรับ Survey Grid และ Branch Card ให้เหมือนรูปที่ 2 */
+.survey-grid{display:grid;grid-template-columns:1fr;gap:24px}
+.survey-card{background:linear-gradient(180deg,#ffffff,#f8fafc);border:1px solid var(--line);border-radius:20px;padding:26px;box-shadow:0 10px 28px rgba(15,43,84,0.06);position:relative;overflow:hidden}
+.survey-card:before{content:"";position:absolute;left:0;top:0;width:100%;height:5px;background:linear-gradient(90deg,var(--blue),var(--cyan))}
+.survey-card h3{margin:0 0 8px;color:var(--navy);font-size:20px;font-weight:700;display:flex;align-items:center;gap:10px}
+.survey-card>p{font-size:14px;color:var(--muted);line-height:1.6;margin:0 0 16px}
+
+.branch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-top:18px}
+.branch-card{border:1px solid var(--line);border-radius:16px;background:#fff;padding:16px 14px 14px;box-shadow:0 6px 18px rgba(15,43,84,0.06);min-width:0;transition:transform .18s,box-shadow .18s;display:flex;flex-direction:column;justify-content:space-between}
+.branch-card:hover{transform:translateY(-3px);box-shadow:0 12px 24px rgba(15,43,84,0.1)}
+.branch-title{font-size:14px;font-weight:800;color:var(--navy);min-height:36px;line-height:1.4}
+.branch-status{font-size:11px;font-weight:700;display:inline-flex;align-items:center;padding:5px 9px;border-radius:99px;margin:6px 0 2px;width:fit-content}
+.branch-status.pending{background:#fef3c7;color:#92400e}
+.branch-status.partial{background:#e0f2fe;color:#0369a1}
+.branch-chart{height:140px;position:relative;margin:10px auto 0;width:100%;max-width:170px}
+.chart-key{text-align:center;font-size:11px;font-weight:600;color:var(--muted);line-height:1.4;margin-top:8px;min-height:28px}
+
+.note{padding:14px 16px;background:#fefce8;border:1px solid #fde047;border-radius:12px;color:#854d0e;font-size:13px;line-height:1.6;margin-top:20px}
+.legend-box{display:flex;flex-wrap:wrap;gap:16px;margin:10px 0 4px;font-size:12px;font-weight:600;color:var(--muted)}
+.legend-item{display:inline-flex;align-items:center;gap:6px}
+.legend-dot{width:10px;height:10px;border-radius:50%}
+.footer{text-align:center;color:var(--muted);font-size:13px;padding:28px 0 12px;font-weight:600}
+
+@media(max-width:992px){
+  .task-ojt{grid-template-columns:46px 1fr auto;row-gap:12px}
+  .task-ojt .ojt-media{grid-column:2 / -1}
+}
+@media(max-width:850px){.layout{grid-template-columns:1fr}.sidebar{position:static;display:flex;overflow-x:auto;gap:6px;padding:10px;border-left:1px solid var(--line);width:100%}.side-title{display:none}.tab{min-width:200px;margin:0}}
+@media(max-width:520px){.branch-grid{grid-template-columns:1fr 1fr}.branch-card{padding:12px 8px}.branch-title{font-size:12px}.task,.task-ojt{grid-template-columns:1fr;gap:8px}}
+
+/* Login gate */
+#appRoot{display:none}body.authenticated #appRoot{display:block}
+.login-gate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,43,84,.82);backdrop-filter:blur(8px)}
+body.authenticated .login-gate{display:none}
+.login-card{width:min(100%,420px);padding:34px;background:#fff;border:1px solid #dbe4ef;border-radius:22px;box-shadow:0 24px 70px rgba(4,24,54,.3)}
+.login-icon{width:58px;height:58px;margin:0 auto 14px;border-radius:18px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--blue),var(--cyan));font-size:26px}
+.login-card h2{margin:0;text-align:center;color:var(--navy);font-size:25px}.login-subtitle{text-align:center;color:var(--muted);font-size:13px;margin:5px 0 24px}
+.login-field{display:block;margin:14px 0 6px;color:var(--navy);font-weight:700;font-size:13px}
+.login-card input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:11px;font:inherit;outline:none}
+.login-card input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(25,103,210,.13)}
+.login-error{display:none;color:#dc2626;font-weight:700;text-align:center;font-size:13px;margin:12px 0}
+.login-error.show{display:block}
+.login-submit{width:100%;margin-top:15px;padding:12px;border:0;border-radius:11px;color:#fff;background:linear-gradient(110deg,var(--blue),var(--cyan));font:inherit;font-weight:800;cursor:pointer}
+.import-frame-wrap{height:calc(100vh - 260px);min-height:620px;background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 8px 24px rgba(15,43,84,.06)}
+.import-frame{display:block;width:100%;height:100%;border:0;background:#fff}
+@media(max-width:600px){.login-card{padding:26px 22px}.import-frame-wrap{height:78vh;min-height:580px}}
+
+
+/* Mobile layout: keep the menu visible and make its tabs horizontally scrollable */
+@media(max-width:850px){
+  .layout,.layout.collapsed{grid-template-columns:minmax(0,1fr);gap:16px}
+  .sidebar,.layout.collapsed .sidebar{position:static;display:flex;flex-direction:row;align-items:stretch;gap:6px;width:100%;padding:10px;border:1px solid var(--line);border-radius:16px;opacity:1;visibility:visible;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity}
+  .side-title{display:none}
+  .tab{flex:0 0 205px;min-width:205px;margin:0;scroll-snap-align:start}
+}
+@media(max-width:600px){
+  .wrap{margin:14px 0;padding:0 10px 24px}
+  .topbar{padding:22px 16px}
+  .topbar h1{font-size:clamp(23px,6vw,29px);overflow-wrap:anywhere}
+  .topbar p{font-size:14px}
+  .panel-head{align-items:flex-start;flex-direction:column;gap:8px}
+  .pill{white-space:normal}
+  .card,.survey-card{padding:16px}
+  .branch-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .branch-card{padding:12px 9px}
+  .branch-title{overflow-wrap:anywhere}
+  .task,.task-ojt{grid-template-columns:38px minmax(0,1fr);gap:10px}
+  .task>.tag-plan,.task-ojt>.tag-plan{grid-column:2;white-space:normal;width:fit-content}
+  .task-ojt .ojt-media{grid-column:2 / -1;flex-wrap:wrap}
+  .footer{padding:20px 6px 10px}
+  .import-frame-wrap{height:78vh;min-height:540px}
+}
+
+</style>
+</head>
+<body>
+<div class="login-gate" id="loginGate">
+  <form class="login-card" id="loginForm">
+    <div class="login-icon">🔒</div>
+    <h2>เข้าสู่ระบบ</h2>
+    <p class="login-subtitle">ระบบติดตามแผนดำเนินงาน GIS กปภ.ข.5</p>
+    <label class="login-field" for="loginUser">ชื่อผู้ใช้งาน</label>
+    <input id="loginUser" type="text" autocomplete="username" placeholder="กรอกชื่อผู้ใช้งาน" required>
+    <label class="login-field" for="loginPass">รหัสผ่าน</label>
+    <input id="loginPass" type="password" autocomplete="current-password" placeholder="กรอกรหัสผ่าน" required>
+    <div class="login-error" id="loginError">⚠️ ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง</div>
+    <button class="login-submit" type="submit">เข้าสู่ระบบ</button>
+  </form>
+</div>
+<div id="appRoot">
+
+<header class="topbar">
+  <div class="eyebrow">GIS • PWA Region 5 2570</div>
+  <h1>แผนดำเนินงานแผนที่แนวท่อ (GIS) 2570</h1>
+  <p>ระบบติดตามความคืบหน้างานสารสนเทศภูมิศาสตร์ กปภ.ข.5</p>
+</header>
+
+<main class="wrap">
+  <div class="layout collapsed" id="mainLayout">
+    <!-- เมนูด้านซ้าย (Auto Hide/Show ชิดขอบซ้าย) -->
+    <nav class="sidebar" id="sidebarMenu" aria-label="เมนูหลัก">
+      <div class="side-title">✦ เมนูแผนดำเนินงาน <span>GIS WORK PLAN · 2570</span></div>
+      <!-- ข้อ 1: เปลี่ยนเป็น งานสนับสนุนและบริการข้อมูล -->
+      <button class="tab" data-tab="support"><span class="num">01</span><span>งานสนับสนุนและบริการข้อมูล<small>หัวข้อ 1 · 2 · 3 · 7</small></span></button>
+      <button class="tab active" data-tab="survey"><span class="num">02</span><span>สำรวจและตรวจสอบข้อมูล GIS<small>หัวข้อ 5 · 6</small></span></button>
+      <button class="tab" data-tab="import"><span class="num">03</span><span>รายงานผลการนำเข้าข้อมูล GIS<small>สรุปผลและติดตามความคืบหน้า</small></span></button>
+    </nav>
+
+    <!-- ส่วนเนื้อหาด้านขวา -->
+    <section class="content">
+      
+      <!-- แท็บที่ 1: งานสนับสนุนและบริการข้อมูล -->
+      <div class="panel" id="support">
+        <!-- ข้อ 1: เปลี่ยนชื่อเป็น งานสนับสนุนและบริการข้อมูล -->
+        <div class="panel-head"><div><h2>งานสนับสนุนและบริการข้อมูล</h2></div><span class="pill">4 หัวข้อ</span></div>
+        <article class="card">
+          <h3>รายการดำเนินงาน</h3><p class="desc">เลือกดูหัวข้องานและใช้เป็นรายการติดตามการดำเนินงานประจำปี</p>
+          
+          <!-- ข้อ 1: ฝึกอบรมเชิงปฏิบัติการ (OJT) พร้อมปรับ Tool เป็น Plugin ช่วยปฏิบัติงาน -->
+          <div class="task task-ojt">
+            <div class="task-icon">🎓</div>
+            <div>
+              <h4>1. ฝึกอบรมเชิงปฏิบัติการ (OJT)</h4>
+              <p>ให้ความรู้และฝึกปฏิบัติงานแก่เจ้าหน้าที่ที่เกี่ยวข้องในสังกัด กปภ.ข.5</p>
+            </div>
+
+            <!-- กล่องภาพอยู่ตรงกลาง: ข้อ 2 เปลี่ยนเป็น Plugin ช่วยปฏิบัติงาน -->
+            <div class="ojt-media">
+              <div class="ojt-img-card">
+                <img src="https://placehold.co/80x80/1967d2/ffffff?text=Plugin" alt="Plugin PWA_GIS" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'40\' height=\'40\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%231967d2\' stroke-width=\'2\'><rect x=\'3\' y=\'3\' width=\'18\' height=\'18\' rx=\'2\'/><path d=\'m9 12 2 2 4-4\'/></svg>'">
+                <span>Plugin PWA_GIS</span>
+              </div>
+              <div class="ojt-img-card">
+                <img src="https://placehold.co/80x80/00a8cc/ffffff?text=Plugin" alt="Plugin ช่วยปฏิบัติงาน" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'40\' height=\'40\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2300a8cc\' stroke-width=\'2\'><path d=\'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z\'/></svg>'">
+                <span>Plugin ช่วยปฏิบัติงาน</span>
+              </div>
+            </div>
+
+            <!-- ป้ายแผนงานด้านขวา -->
+            <span class="tag-plan">● ตามแผน ก.พ. - มิ.ย.70</span>
+          </div>
+
+          <!-- ข้อ 2: ให้คำปรึกษาด้านสารสนเทศภูมิศาสตร์ (GIS) -->
+          <div class="task">
+            <div class="task-icon">🧭</div>
+            <div>
+              <h4>2. ให้คำปรึกษาด้านสารสนเทศภูมิศาสตร์ (GIS)</h4>
+              <p>ให้คำแนะนำการใช้งาน GIS แก่พนักงานและผู้เกี่ยวข้อง รวมถึงติดตามการเข้าร่วมกิจกรรม</p>
+            </div>
+            <span class="tag-plan">● ตามแผน ตลอดปีงบประมาณ 70</span>
+          </div>
+
+          <!-- ข้อ 3: สนับสนุนการใช้งานโปรแกรมและแอปพลิเคชัน -->
+          <div class="task">
+            <div class="task-icon">🛠️</div>
+            <div>
+              <h4>3. สนับสนุนการใช้งานโปรแกรมและแอปพลิเคชัน</h4>
+              <p>สนับสนุนการใช้ QGIS, GIS Online และ GIS Offline พร้อมปรับปรุงโปรแกรมให้เหมาะสมกับการใช้งานของสาขา</p>
+            </div>
+            <span class="tag-plan">● ตามแผน ตลอดปีงบประมาณ 70</span>
+          </div>
+
+          <!-- ข้อ 7: บริการข้อมูลแผนที่ -->
+          <div class="task">
+            <div class="task-icon">📤</div>
+            <div>
+              <h4>7. บริการข้อมูลแผนที่</h4>
+              <p>ให้บริการข้อมูลแผนที่แก่หน่วยงานภายในและหน่วยงานภายนอกตามคำขอ</p>
+            </div>
+            <span class="tag-plan">● ตามแผน ตลอดปีงบประมาณ 70</span>
+          </div>
+
+        </article>
+      </div>
+
+      <!-- แท็บที่ 2: สำรวจและตรวจสอบข้อมูล GIS (ข้อ 3: ปรับให้เหมือนภาพที่ 2) -->
+      <div class="panel active" id="survey">
+        <div class="panel-head">
+          <div>
+            <h2>สำรวจและตรวจสอบข้อมูล GIS</h2>
+          </div>
+          <span class="pill">หัวข้อ 5 · 6</span>
+        </div>
+        
+        <div class="survey-grid">
+          
+          <!-- บล็อกบน: ข้อมูลสำรวจเชิงพื้นที่ KPI -->
+          <article class="survey-card">
+            <h3>🗺️ ข้อมูลสำรวจเชิงพื้นที่ KPI</h3>
+            <p>สถานะการดำเนินงานราย กปภ.สาขา ทั้ง 5 สาขา แสดงกราฟวงกลมแยกแต่ละพื้นที่เรียงตามแผนปฏิบัติงาน</p>
+            
+            <div class="legend-box">
+              <span class="legend-item"><span class="legend-dot" style="background:#1967d2"></span> สำรวจเชิงพื้นที่ (70%)</span>
+              <span class="legend-item"><span class="legend-dot" style="background:#0d9448"></span> นำเข้าข้อมูล (30%)</span>
+              <span class="legend-item"><span class="legend-dot" style="background:#d97706"></span> ตามแผนปฏิบัติงาน</span>
+            </div>
+
+            <div class="branch-grid">
+              <!-- 1. สาขาเขาชัยสน -->
+              <div class="branch-card">
+                <div>
+                  <div class="branch-title">กปภ.สาขาเขาชัยสน</div>
+                  <span class="branch-status pending">● ตามแผน ต.ค. 69</span>
+                </div>
+                <div class="branch-chart"><canvas id="kpiKhaoChaison"></canvas></div>
+                <div class="chart-key">สำรวจแล้ว 70% | นำเข้า 0%</div>
+              </div>
+
+              <!-- 2. สาขานาทวี -->
+              <div class="branch-card">
+                <div>
+                  <div class="branch-title">กปภ.สาขานาทวี</div>
+                  <span class="branch-status pending">● ตามแผน ต.ค. 69</span>
+                </div>
+                <div class="branch-chart"><canvas id="kpiNaThawi"></canvas></div>
+                <div class="chart-key">สำรวจ 70% + นำเข้า 10% (รวม 80%)</div>
+              </div>
+
+              <!-- 3. สาขาละงู -->
+              <div class="branch-card">
+                <div>
+                  <div class="branch-title">กปภ.สาขาละงู</div>
+                  <span class="branch-status pending">● ตามแผน ม.ค.-ก.พ. 70</span>
+                </div>
+                <div class="branch-chart"><canvas id="kpiLaNgu"></canvas></div>
+                <div class="chart-key">สำรวจแล้ว 0% | นำเข้า 0%</div>
+              </div>
+
+              <!-- 4. สาขาหาดใหญ่ (พ.) -->
+              <div class="branch-card">
+                <div>
+                  <div class="branch-title">กปภ.สาขาหาดใหญ่ (พ.)</div>
+                  <span class="branch-status pending">● ตามแผน มี.ค.-มิ.ย. 70</span>
+                </div>
+                <div class="branch-chart"><canvas id="kpiHatYai"></canvas></div>
+                <div class="chart-key">สำรวจแล้ว 0% | นำเข้า 0%</div>
+              </div>
+
+              <!-- 5. สาขาเบตง -->
+              <div class="branch-card">
+                <div>
+                  <div class="branch-title">กปภ.สาขาเบตง</div>
+                  <span class="branch-status pending">● ตามแผน ก.ค.-ก.ย. 70</span>
+                </div>
+                <div class="branch-chart"><canvas id="kpiBetong"></canvas></div>
+                <div class="chart-key">สำรวจแล้ว 0% | นำเข้า 0%</div>
+              </div>
+            </div>
+          </article>
+
+          <!-- บล็อกล่าง: จัดทำข้อมูลค่าระดับ -->
+          <article class="survey-card">
+            <h3>📐 จัดทำข้อมูลค่าระดับ</h3>
+            <p>ติดตามสถานะการจัดทำข้อมูลค่าระดับรายสาขา แยกกราฟเพื่อเห็นความคืบหน้าได้ทันทีเรียงตามแผนปฏิบัติงาน</p>
+            
+            <div class="legend-box">
+              <span class="legend-item"><span class="legend-dot" style="background:#1967d2"></span> เก็บข้อมูลพื้นที่ (70%)</span>
+              <span class="legend-item"><span class="legend-dot" style="background:#0d9448"></span> ประมวลผล (30%)</span>
+              <span class="legend-item"><span class="legend-dot" style="background:#d97706"></span> ตามแผนปฏิบัติงาน</span>
+            </div>
+
+            <div class="branch-grid">
+              <!-- 1. สาขาเขาชัยสน -->
+              <div class="branch-card">
+                <div>
+                  <div class="branch-title">กปภ.สาขาเขาชัยสน</div>
+                  <span class="branch-status pending">● ตามแผน ต.ค. 69</span>
+                </div>
+                <div class="branch-chart"><canvas id="elevKhaoChaison"></canvas></div>
+                <div class="chart-key">เก็บข้อมูล 70% | ประมวลผล 0%</div>
+              </div>
+
+              <!-- 2. สาขานาทวี -->
+              <div class="branch-card">
+                <div>
+                  <div class="branch-title">กปภ.สาขานาทวี</div>
+                  <span class="branch-status pending">● ตามแผน พ.ย.-ธ.ค. 69</span>
+                </div>
+                <div class="branch-chart"><canvas id="elevNaThawi"></canvas></div>
+                <div class="chart-key">สำรวจแล้ว 0% | นำเข้า 0%</div>
+              </div>
+
+              <!-- 3. สาขาละงู -->
+              <div class="branch-card">
+                <div>
+                  <div class="branch-title">กปภ.สาขาละงู</div>
+                  <span class="branch-status pending">● ตามแผน ก.พ.-มี.ค. 70</span>
+                </div>
+                <div class="branch-chart"><canvas id="elevLaNgu"></canvas></div>
+                <div class="chart-key">สำรวจแล้ว 0% | นำเข้า 0%</div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="note">
+          <strong>💡 สัดส่วนโครงสร้าง 70/30:</strong> 
+          คิดจากสัดส่วน 100% แบ่งเป็น <b>ขั้นตอนสำรวจ/เก็บข้อมูล = 70%</b> และ <b>ขั้นตอนนำเข้าข้อมูล/ประมวลผล = 30%</b>
+        </div>
+      </div>
+
+      <!-- แท็บที่ 3: รายงานผลการนำเข้าข้อมูล GIS -->
+      <div class="panel" id="import">
+        <div class="panel-head">
+          <div><h2>รายงานผลการนำเข้าข้อมูล GIS</h2></div>
+          <span class="pill">ระบบติดตามข้อมูล</span>
+        </div>
+        <div class="import-frame-wrap">
+          <iframe class="import-frame" src="GIS-Import-Report-2569-mobile.html" title="ระบบรายงานผลการนำเข้าข้อมูล GIS" loading="lazy"></iframe>
+        </div>
+      </div>
+
+    </section>
+  </div>
+  <div class="footer">งานแผนที่แนวท่อ(GIS) กองระบบจำหน่าย การประปาส่วนภูมิภาคเขต 5</div>
+</main>
+</div>
+
+<script>
+// Login gate: คงสถานะไว้เฉพาะแท็บเบราว์เซอร์ปัจจุบัน
+const loginForm = document.getElementById('loginForm');
+const loginError = document.getElementById('loginError');
+function setAuthenticated(ok) {
+  document.body.classList.toggle('authenticated', ok);
+  if (ok) sessionStorage.setItem('gis2570Authenticated', 'true');
+  else sessionStorage.removeItem('gis2570Authenticated');
+}
+loginForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+  if (username === 'GIS5' && password === '123456') {
+    loginError.classList.remove('show');
+    setAuthenticated(true);
+  } else {
+    loginError.classList.add('show');
+  }
+});
+if (sessionStorage.getItem('gis2570Authenticated') === 'true') {
+  document.body.classList.add('authenticated');
+}
+
+// สลับแท็บ
+const tabs = document.querySelectorAll('.tab');
+const panels = document.querySelectorAll('.panel');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.toggle('active', t === tab));
+    panels.forEach(p => p.classList.toggle('active', p.id === tab.dataset.tab));
+  });
+});
+
+// Auto Hide/Show แถบเมนูด้านซ้ายเมื่อเอาเมาส์ชิดขอบจอซ้าย
+const mainLayout = document.getElementById('mainLayout');
+const sidebarMenu = document.getElementById('sidebarMenu');
+
+const isCompactScreen = () => window.matchMedia('(max-width: 850px)').matches;
+function updateMenuForScreen() {
+  if (isCompactScreen()) mainLayout.classList.remove('collapsed');
+}
+window.addEventListener('resize', updateMenuForScreen);
+updateMenuForScreen();
+document.addEventListener('mousemove', (e) => {
+  if (isCompactScreen()) {
+    mainLayout.classList.remove('collapsed');
+    return;
+  }
+  if (e.clientX <= 35 || sidebarMenu.contains(e.target)) {
+    mainLayout.classList.remove('collapsed');
+  } else {
+    mainLayout.classList.add('collapsed');
+  }
+});
+
+// วาดกราฟ Donut
+window.addEventListener('DOMContentLoaded', () => {
+  function renderProgressChart(canvasId, config) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    let dataValues = [];
+    let bgColors = [];
+    let labels = [];
+
+    if (config.type === 'plan') {
+      dataValues = [100];
+      bgColors = ['#d97706']; // สีส้มตามแผน
+      labels = ['ตามแผนปฏิบัติงาน'];
+    } else if (config.type === 'split7030') {
+      const val1 = config.part1Done ? 70 : 0;
+      const val2 = config.part2Value !== undefined ? config.part2Value : Math.round(30 * ((config.part2Percent || 0) / 100) * 10) / 10;
+      const remaining = Math.max(0, 100 - (val1 + val2));
+
+      dataValues = [val1, val2, remaining];
+      bgColors = ['#1967d2', '#0d9448', '#e2e8f0'];
+      labels = [config.label1 || 'สำรวจภาคสนาม', config.label2 || 'นำเข้าข้อมูล/ประมวลผล', 'คงเหลือ'];
+    }
+
+    new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: dataValues,
+          backgroundColor: bgColors,
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '68%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.label}: ${ctx.raw}%`
+            }
+          }
+        }
+      },
+      plugins: [{
+        id: 'centerTextPlugin',
+        afterDraw(chart) {
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return;
+          const x = (chartArea.left + chartArea.right) / 2;
+          const y = (chartArea.top + chartArea.bottom) / 2;
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#0f2b54';
+          ctx.font = 'bold 13px "Leelawadee UI", sans-serif';
+          ctx.fillText(config.centerText, x, y);
+          ctx.restore();
+        }
+      }]
+    });
+  }
+
+  // --- ข้อมูลสำรวจเชิงพื้นที่ KPI (ตรงตามภาพที่ 2) ---
+  renderProgressChart('kpiKhaoChaison', { 
+    type: 'split7030', 
+    part1Done: true, 
+    part2Value: 0, 
+    label1: 'สำรวจเชิงพื้นที่ (70%)', 
+    label2: 'นำเข้าข้อมูล (0%)',
+    centerText: '70%' 
+  });
+  renderProgressChart('kpiNaThawi', { 
+    type: 'split7030', 
+    part1Done: true, 
+    part2Value: 10, 
+    label1: 'สำรวจเชิงพื้นที่ (70%)', 
+    label2: 'นำเข้าข้อมูล (10%)',
+    centerText: '80%' 
+  });
+  renderProgressChart('kpiLaNgu', { type: 'plan', centerText: '0%' });
+  renderProgressChart('kpiHatYai', { type: 'plan', centerText: '0%' });
+  renderProgressChart('kpiBetong', { type: 'plan', centerText: '0%' });
+
+  // --- จัดทำข้อมูลค่าระดับ (ตรงตามภาพที่ 2) ---
+  renderProgressChart('elevKhaoChaison', { 
+    type: 'split7030', 
+    part1Done: true, 
+    part2Value: 0, 
+    label1: 'เก็บข้อมูลในพื้นที่ (70%)', 
+    label2: 'ประมวลผล (0%)',
+    centerText: '70%' 
+  });
+  renderProgressChart('elevNaThawi', { type: 'plan', centerText: '0%' });
+  renderProgressChart('elevLaNgu', { type: 'plan', centerText: '0%' });
+});
+</script>
+</body>
+</html>
